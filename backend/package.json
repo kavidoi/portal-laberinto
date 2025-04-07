@@ -1,5 +1,5 @@
 {
-  "name": "form-builder-backend",
+  "name": "portal-laberinto-backend",
   "version": "1.0.0",
   "description": "Backend for sales entry form",
   "main": "server.js",

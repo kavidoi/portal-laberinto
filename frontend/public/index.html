@@ -3,22 +3,55 @@
 <head>
 
   <style>
-    .new-client-modal {
-      display: none;
-      /* ... other modal styles ... */
-    }
-    .new-client-modal.is-open {
-      display: flex;
-    }
-    
-    .loading-indicator {
-      display: none;
-      /* Add loading spinner styles */
-    }
-    .loading-indicator.active {
-      display: block;
-    }
-  </style>
+      /* Modal and Loading Indicator */
+      .new-client-modal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 100;
+        justify-content: center;
+        align-items: center;
+      }
+      .new-client-modal.is-open {
+        display: flex;
+      }
+      .loading-indicator {
+        display: none;
+      }
+      .loading-indicator.active {
+        display: block;
+      }
+      
+      /* General Utility and Component Styles */
+      .progress-dot {
+        width: 12px;
+        height: 12px;
+        border: 2px solid #9900ef;
+      }
+      .progress-dot.active {
+        background-color: #9900ef;
+      }
+      .select-wrapper {
+        position: relative;
+      }
+      .select-wrapper:after {
+        content: "▼";
+        font-size: 0.7rem;
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #6b7280;
+      }
+      .required-field::after {
+        content: "*";
+        color: #ef4444;
+        margin-left: 4px;
+      }
+      /* Additional styles for icons, modals, etc. are retained from CDN-loaded styles */
+    </style>
   
   <!-- In body section - ensure proper template structure -->
   <template id="wine-subform-template">
@@ -38,7 +71,7 @@
   </template>
   
   <!-- At end of body before closing tag -->
-  <script src="scripts/clientSearch.js"></script>
+  <script src="../../scripts/clientSearch.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', function() {
     // Element declarations with null checks
