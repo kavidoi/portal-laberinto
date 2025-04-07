@@ -1,0 +1,10 @@
+[build]
+  # The directory in which your site's static files are located after build.
+  publish = "build"
+  # Build command to run your project build (if needed).
+  command = "npm run build"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

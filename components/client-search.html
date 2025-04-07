@@ -1,0 +1,34 @@
+<!-- Client Search Component -->
+<div class="client-search-container">
+  <div class="search-header">
+    <label for="client-search-input" class="screen-reader-only">
+      Search for clients
+    </label>
+    <input 
+      type="search" 
+      id="client-search-input"
+      class="search-input"
+      placeholder="Search clients..."
+      aria-controls="client-search-results"
+    >
+    <div class="loading-indicator" hidden aria-hidden="true">
+      Loading...
+    </div>
+  </div>
+
+  <!-- Search Results -->
+  <ul 
+    id="client-search-results"
+    class="client-search-results"
+    role="listbox"
+    aria-labelledby="client-search-input"
+    aria-expanded="false"
+  >
+    <!-- Dynamic content will be inserted here -->
+  </ul>
+
+  <!-- No Results State -->
+  <div class="no-results" hidden>
+    <p>No clients found matching your search.</p>
+  </div>
+</div>

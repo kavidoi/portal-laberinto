@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Clientes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Custom primary color variable (matching the SVG and active filter) */
+    :root {
+      --primary-color: #9900ef;
+    }
+
+    /* Apply primary color to Tailwind classes where needed if default TW doesn't suffice */
+    .bg-primary { background-color: var(--primary-color); }
+    .text-primary { color: var(--primary-color); }
+    .border-primary { border-color: var(--primary-color); }
+    .ring-primary:focus { --tw-ring-color: var(--primary-color); }
+    .focus\:border-primary:focus { border-color: var(--primary-color); }
+    .hover\:bg-primary-dark:hover { background-color: #8600d4; } /* Slightly darker shade for hover */
+    .hover\:underline:hover { text-decoration: underline; }
+
+    .person-icon {
+      /* Using the primary color variable */
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239900ef"><path d="M12 12q-1.65 0-2.825-1.175Q8 9.65 8 8q0-1.65 1.175-2.825Q10.35 4 12 4q1.65 0 2.825 1.175Q16 6.35 16 8q0 1.65-1.175 2.825Q13.65 12 12 12Zm-8 8v-2.8q0-.85.438-1.563.437-.712 1.162-1.087 1.55-.775 3.15-1.163Q10.35 14 12 14t3.25.387q1.6.388 3.15 1.163.725.375 1.162 1.087Q20 16.35 20 17.2V20Z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: 12px center;
+      background-size: 20px;
+      padding-left: 40px !important; /* Keep important if needed to override TW */
+    }
+
+    /* Removed unused .select-wrapper */
+
+    .client-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between; /* Added to space out name and badges */
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      font-size: 0.875rem; /* Slightly larger text */
+    }
+    .client-option:hover {
+      background-color: #f3e8ff; /* Light purple */
+    }
+    .client-option.active { /* Added active state (e.g., for keyboard navigation - not implemented here) */
+        background-color: #e9d5ff; /* Medium purple */
+    }
+    .client-option-details { /* Container for badges */
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .client-badge {
+      font-size: 0.65rem; /* Smaller badges */
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 4px; /* Reduced margin */
+      white-space: nowrap; /* Prevent badges wrapping */
+    }
+    .client-badge.club {
+      background-color: #c084fc; /* Tailwind purple-400 */
+      color: white;
+    }
+    .client-badge.b2b {
+      background-color: #8b5cf6; /* Tailwind violet-500 */
+      color: white;
+    }
+    .client-badge.frequent { /* Added style for frequent */
+        background-color: #fbbf24; /* Tailwind amber-400 */
+        color: #78350f; /* Tailwind amber-900 */
+    }
+    .search-dropdown {
+      position: absolute;
+      width: 100%;
+      max-height: 300px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #e5e7eb; /* Tailwind gray-200 */
+      border-top: none; /* Remove top border as it connects to input */
+      border-radius: 0 0 8px 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      z-index: 50;
+      display: none; /* Initially hidden */
+    }
+    .search-wrapper {
+      position: relative;
+    }
+    .search-input-container {
+      position: relative;
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af; /* Tailwind gray-400 */
+      z-index: 10; /* Ensure icon is clickable if needed */
+    }
+    .filter-tags {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .filter-tag {
+      padding: 4px 10px;
+      border-radius: 16px;
+      font-size: 0.75rem;
+      background-color: #f3f4f6; /* Tailwind gray-100 */
+      color: #4b5563; /* Tailwind gray-600 */
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent; /* Add border for consistent size */
+    }
+    .filter-tag:hover {
+      background-color: #e5e7eb; /* Tailwind gray-200 */
+    }
+    .filter-tag.active {
+      background-color: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+    .no-results {
+      padding: 12px;
+      color: #6b7280; /* Tailwind gray-500 */
+      font-style: italic;
+      text-align: center;
+      font-size: 0.875rem;
+    }
+    .new-client-modal {
+      display: none; /* Initially hidden */
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .new-client-content {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      display: flex; /* Use flex column for layout */
+      flex-direction: column;
+    }
+     .modal-header {
+        /* Combine gradient and text styles */
+        background: linear-gradient(to right, var(--primary-color), #a855f7); /* primary to purple-500 */
+        padding: 1rem; /* 16px */
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+     }
+     .modal-title {
+        font-size: 1.25rem; /* text-xl */
+        font-weight: bold;
+        color: white;
+     }
+     .modal-body {
+        padding: 1rem 1.5rem; /* p-4 md:p-6 */
+        flex-grow: 1; /* Allow body to take available space */
+        overflow-y: auto; /* Scroll only body if needed */
+     }
+    .client-type-selector {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #e5e7eb; /* Separator */
+      padding-bottom: 16px;
+    }
+    .client-type-btn {
+      padding: 10px 20px; /* Slightly smaller */
+      margin: 0 8px;
+      background: #f3e8ff; /* Light purple */
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.875rem;
+      border: 1px solid transparent;
+    }
+    .client-type-btn.active {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+    .client-form-section {
+      /* Removed padding - handled by modal-body now */
+    }
+    .collapsible-section {
+      margin-top: 16px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 16px;
+    }
+    .collapsible-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center; /* Vertically align items */
+      cursor: pointer;
+    }
+     .collapsible-header i { /* Style the icon */
+        transition: transform 0.3s ease;
+     }
+     .collapsible-header.open i { /* Rotate icon when open */
+        transform: rotate(180deg);
+     }
+    .collapsible-content {
+      margin-top: 8px;
+      display: none; /* Hidden by default */
+      overflow: hidden; /* Smooth transition */
+      transition: max-height 0.3s ease-out;
+      max-height: 0; /* Needed for transition */
+    }
+    .collapsible-content.open {
+      display: block; /* Show when open */
+      max-height: 1000px; /* Arbitrary large height for transition */
+    }
+    .required-field::after {
+      content: "*";
+      color: #ef4444; /* Tailwind red-500 */
+      margin-left: 4px;
+    }
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+      padding: 1rem 1.5rem; /* Match modal-body padding */
+      border-top: 1px solid #e5e7eb;
+      background-color: #f9fafb; /* Tailwind gray-50 */
+      border-bottom-left-radius: 12px; /* Round bottom corners */
+      border-bottom-right-radius: 12px;
+    }
+    .error-message {
+      color: #ef4444; /* Tailwind red-500 */
+      font-size: 0.75rem; /* text-xs */
+      margin-top: 4px;
+      display: none; /* Hide initially */
+    }
+    .input-error {
+      border-color: #ef4444 !important; /* Tailwind red-500 */
+      --tw-ring-color: #ef4444 !important; /* Ensure ring color matches */
+    }
+    /* Tailwind Form Plugin adjustment if needed - default focus rings are usually blue */
+    input:focus, select:focus, textarea:focus {
+       /* Use primary color for focus ring if not using the plugin, otherwise adjust plugin */
+       /* Example: border-color: var(--primary-color); box-shadow: 0 0 0 2px var(--primary-color); */
+    }
+
+    /* Tailwind custom forms plugin styles (if you were using @tailwindcss/forms) */
+    /* You might need to adjust these if you install the plugin */
+    /* .form-input, .form-textarea, .form-select { ... } */
+
+    /* Utility to visually hide but keep accessible */
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-2xl mx-auto p-4 md:p-6">
+    <form id="main-form"> <div class="bg-white rounded-xl shadow-md overflow-visible"> <div class="search-wrapper p-6">
+          <div class="flex justify-between items-center mb-1">
+            <label for="client-search" class="block text-sm font-medium text-gray-700">Cliente</label>
+            <button type="button" id="new-client-btn" class="text-xs text-primary hover:underline hover:text-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded">
+              + Nuevo Cliente
+            </button>
+          </div>
+          <div class="search-input-container">
+            <i class="fas fa-search search-icon pointer-events-none"></i>
+            <input type="text" id="client-search" name="client-search" placeholder="Buscar por nombre, email o RUT..."
+                   class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 pl-10 pr-3 border shadow-sm"
+                   autocomplete="off">
+            <input type="hidden" id="selected-client-id" name="selected-client-id">
+            <div id="selected-client-display" class="mt-2 text-sm text-gray-600 hidden">
+                Cliente seleccionado: <strong id="selected-client-name"></strong>
+                <button type="button" id="clear-selection-btn" class="ml-2 text-xs text-red-600 hover:underline focus:outline-none">&times; Limpiar</button>
+            </div>
+          </div>
+
+          <div class="filter-tags mt-3"> <div class="filter-tag" data-filter="all">Todos</div> <div class="filter-tag" data-filter="club">Club</div>
+            <div class="filter-tag" data-filter="b2b">B2B</div>
+            <div class="filter-tag" data-filter="frequent">Frecuentes</div>
+          </div>
+
+          <div id="search-dropdown" class="search-dropdown">
+            </div>
+        </div>
+      </div>
+
+      </form> </div>
+
+  <div id="new-client-modal" class="new-client-modal">
+    <div class="new-client-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Nuevo Cliente / Empresa</h2>
+      </div>
+
+      <div class="modal-body">
+         <form id="new-client-form">
+            <div id="client-type-selector" class="client-type-selector">
+              <button type="button" class="client-type-btn active" data-type="individual">Cliente Individual</button>
+              <button type="button" class="client-type-btn" data-type="business">Empresa (B2B)</button>
+            </div>
+
+            <input type="hidden" id="modal-client-type" name="modal-client-type" value="Cliente Final">
+
+            <div id="individual-client-form" class="client-form-section">
+              <div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label for="client-firstname" class="block text-sm font-medium text-gray-700 mb-1 required-field">Nombre</label>
+                    <input type="text" id="client-firstname" name="client-firstname" required class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm">
+                    <div id="client-firstname-error" class="error-message">Este campo es obligatorio.</div>
+                  </div>
+                  <div>
+                    <label for="client-lastname" class="block text-sm font-medium text-gray-700 mb-1">Apellido</label>
+                    <input type="text" id="client-lastname" name="client-lastname" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm">
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label for="client-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="client-email" name="client-email" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm">
+                    <div id="client-email-error" class="error-message">Ingrese un email válido (ej: nombre@dominio.com).</div>
+                  </div>
+                  <div>
+                    <label for="client-phone" class="block text-sm font-medium text-gray-700 mb-1">Celular</label>
+                    <input type="tel" id="client-phone" name="client-phone" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm" placeholder="+569xxxxxxxx">
+                    <div id="client-phone-error" class="error-message">Ingrese un número válido (ej: +56912345678).</div>
+                  </div>
+                </div>
+
+                <div>
+                  <label for="client-instagram" class="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
+                  <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 pointer-events-none">@</span>
+                    <input type="text" id="client-instagram" name="client-instagram" class="pl-7 w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm" placeholder="usuario">
+                  </div>
+                  <div id="client-instagram-error" class="error-message">Ingrese un nombre de usuario válido (solo letras, números, '.', '_').</div>
+                </div>
+
+                <div class="collapsible-section">
+                  <div class="collapsible-header" id="individual-extra-header"> <span class="text-sm font-medium text-gray-700">+ Más información</span>
+                    <i class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-300"></i>
+                  </div>
+                  <div id="individual-extra-info" class="collapsible-content">
+                    <div class="space-y-4 mt-4">
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label for="client-rut" class="block text-sm font-medium text-gray-700 mb-1">RUT</label>
+                          <input type="text" id="client-rut" name="client-rut" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm" placeholder="12345678-9">
+                          <div id="client-rut-error" class="error-message">Ingrese un RUT chileno válido (ej: 12345678-9).</div>
+                        </div>
+                        <div>
+                          <label for="client-country" class="block text-sm font-medium text-gray-700 mb-1">País</label>
+                          <input type="text" id="client-country" name="client-country" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm" value="Chile"> </div>
+                      </div>
+
+                      <div>
+                        <label for="client-address" class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                        <input type="text" id="client-address" name="client-address" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm">
+                      </div>
+
+                      <div>
+                        <label for="client-comments" class="block text-sm font-medium text-gray-700 mb-1">Comentarios</label>
+                        <textarea id="client-comments" name="client-comments" rows="2" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm"></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="business-client-form" class="client-form-section hidden">
+              <div class="space-y-4">
+                <div>
+                  <label for="business-name" class="block text-sm font-medium text-gray-700 mb-1 required-field">Nombre Empresa</label>
+                  <input type="text" id="business-name" name="business-name" required class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm">
+                  <div id="business-name-error" class="error-message">Este campo es obligatorio.</div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="business-type" class="block text-sm font-medium text-gray-700 mb-1">Tipo Empresa</label>
+                         <select id="business-type" name="business-type" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm bg-white">
+                           <option value="" disabled selected>Seleccione un tipo</option>
+                           <option value="Restaurant">Restaurant</option>
+                           <option value="Tienda">Tienda</option>
+                           <option value="Hotel">Hotel</option>
+                           <option value="Agencia Turismo">Agencia Turismo</option>
+                           <option value="Distribuidor">Distribuidor</option>
+                           <option value="Otro">Otro</option>
+                         </select>
+                    </div>
+                    <div>
+                      <label for="business-rut" class="block text-sm font-medium text-gray-700 mb-1">RUT Empresa</label>
+                      <input type="text" id="business-rut" name="business-rut" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm" placeholder="76xxxxxx-x">
+                      <div id="business-rut-error" class="error-message">Ingrese un RUT chileno válido (ej: 76123456-7).</div>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="business-contact" class="block text-sm font-medium text-gray-700 mb-1">Persona de Contacto</label>
+                    <input type="text" id="business-contact" name="business-contact" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm">
+                </div>
+
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label for="business-email" class="block text-sm font-medium text-gray-700 mb-1">Email Contacto</label>
+                    <input type="email" id="business-email" name="business-email" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm">
+                    <div id="business-email-error" class="error-message">Ingrese un email válido.</div>
+                  </div>
+                  <div>
+                    <label for="business-phone" class="block text-sm font-medium text-gray-700 mb-1">Celular Contacto</label>
+                    <input type="tel" id="business-phone" name="business-phone" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm" placeholder="+569xxxxxxxx">
+                    <div id="business-phone-error" class="error-message">Ingrese un número válido (ej: +56912345678).</div>
+                  </div>
+                </div>
+
+                <div>
+                  <label for="business-instagram" class="block text-sm font-medium text-gray-700 mb-1">Instagram Empresa</label>
+                  <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 pointer-events-none">@</span>
+                    <input type="text" id="business-instagram" name="business-instagram" class="pl-7 w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm" placeholder="usuario_empresa">
+                  </div>
+                  <div id="business-instagram-error" class="error-message">Ingrese un nombre de usuario válido.</div>
+                </div>
+
+                <div class="collapsible-section">
+                  <div class="collapsible-header" id="business-extra-header"> <span class="text-sm font-medium text-gray-700">+ Más información</span>
+                    <i class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-300"></i>
+                  </div>
+                  <div id="business-extra-info" class="collapsible-content">
+                    <div class="space-y-4 mt-4">
+                      <div>
+                        <label for="business-address" class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                        <input type="text" id="business-address" name="business-address" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm">
+                      </div>
+
+                      <div>
+                        <label for="business-country" class="block text-sm font-medium text-gray-700 mb-1">País</label>
+                        <input type="text" id="business-country" name="business-country" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm" value="Chile"> </div>
+
+                      <div>
+                        <label for="business-comments" class="block text-sm font-medium text-gray-700 mb-1">Comentarios</label>
+                        <textarea id="business-comments" name="business-comments" rows="2" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary py-2 px-3 border shadow-sm"></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+         </form> </div> <div class="form-actions">
+        <button type="button" id="cancel-client-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">
+          Cancelar
+        </button>
+        <button type="button" id="save-client-btn" class="px-6 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+          Guardar Cliente
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Constants and Utility Functions ---
+    const API_URL = '/api/contactos'; // Make API URL configurable
+    const FREQUENT_PURCHASE_THRESHOLD = 3; // Example threshold
+
+    // RUT validation function (Chile)
+    function checkRut(rut) {
+        if (!rut || typeof rut !== 'string') return false;
+        rut = rut.replace(/[.-]/g, '').toUpperCase();
+        if (!/^\d{7,8}[0-9K]$/.test(rut)) return false;
+
+        const rutDigits = rut.slice(0, -1);
+        const rutVerifier = rut.slice(-1);
+        let sum = 0;
+        let factor = 2;
+
+        for (let i = rutDigits.length - 1; i >= 0; i--) {
+            sum += parseInt(rutDigits.charAt(i)) * factor;
+            factor = factor === 7 ? 2 : factor + 1;
+        }
+
+        const dv = 11 - (sum % 11);
+        const calculatedDv = dv === 11 ? '0' : dv === 10 ? 'K' : dv.toString();
+
+        return calculatedDv === rutVerifier;
+    }
+
+    // Email validation
+    function validateEmail(email) {
+        if (!email) return true; // Optional
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(String(email).toLowerCase());
+    }
+
+    // Phone validation (Basic Chilean format + optional international)
+    function validatePhone(phone) {
+        if (!phone) return true; // Optional
+        // Allows optional +56, optional space, then 9 digits (mobile) or fewer (landline - less strict)
+        const re = /^(\+?56)?\s?(\d\s?){8,9}$/;
+        // Stricter version for mobile only: /^(\+?56)?\s?9\s?\d{4}\s?\d{4}$/
+        return re.test(String(phone).replace(/\s+/g, '')); // Remove spaces before testing
+    }
+
+    // Instagram validation (basic format)
+    function validateInstagram(instagram) {
+        if (!instagram) return true; // Optional
+        // Remove leading @ for validation if present
+        const username = instagram.startsWith('@') ? instagram.substring(1) : instagram;
+        const re = /^[a-zA-Z0-9._]{1,30}$/; // Allows letters, numbers, periods, underscores
+        return re.test(username);
+    }
+
+    // Toggle visibility and validation errors
+    function showError(elementId, message) {
+        const errorElement = document.getElementById(elementId + '-error');
+        const inputElement = document.getElementById(elementId);
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        if (inputElement) inputElement.classList.add('input-error');
+    }
+
+    function hideError(elementId) {
+        const errorElement = document.getElementById(elementId + '-error');
+        const inputElement = document.getElementById(elementId);
+        if (errorElement) errorElement.style.display = 'none';
+        if (inputElement) inputElement.classList.remove('input-error');
+    }
+
+    // --- DOM Elements ---
+    const clientSearchInput = document.getElementById('client-search');
+    const selectedClientIdInput = document.getElementById('selected-client-id');
+    const selectedClientDisplay = document.getElementById('selected-client-display');
+    const selectedClientNameSpan = document.getElementById('selected-client-name');
+    const clearSelectionBtn = document.getElementById('clear-selection-btn');
+    const searchDropdown = document.getElementById('search-dropdown');
+    const filterTagsContainer = document.querySelector('.filter-tags');
+    const newClientModal = document.getElementById('new-client-modal');
+    const newClientBtn = document.getElementById('new-client-btn');
+    const cancelClientBtn = document.getElementById('cancel-client-btn');
+    const saveClientBtn = document.getElementById('save-client-btn');
+    const clientTypeSelector = document.getElementById('client-type-selector');
+    const clientTypeButtons = document.querySelectorAll('.client-type-btn');
+    const individualForm = document.getElementById('individual-client-form');
+    const businessForm = document.getElementById('business-client-form');
+    const modalClientTypeInput = document.getElementById('modal-client-type');
+    const newClientFormElement = document.getElementById('new-client-form'); // The form inside the modal
+
+    // Collapsible Headers
+    const individualCollapsibleHeader = document.getElementById('individual-extra-header');
+    const businessCollapsibleHeader = document.getElementById('business-extra-header');
+
+    // --- State Variables ---
+    let allContactos = [];
+    let filteredContactos = [];
+    let activeFilter = 'all'; // Default filter
+    let isDropdownVisible = false;
+
+    // --- Functions ---
+
+    // Function to fetch contacts from API
+    async function fetchContacts() {
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const contactos = await response.json();
+
+            // Process contacts - adapt based on your actual API response structure
+            allContactos = contactos.map(contacto => {
+                const fields = contacto.fields || {}; // Handle cases where fields might be missing
+                const name = fields['Nombre Completo'] || fields['Nombre'] || fields['Name'] || 'Nombre Desconocido';
+                const email = fields['Email'] || fields['Correo electrónico'] || '';
+                const rut = fields['RUT'] || fields['Tax ID'] || '';
+                // !! converts truthy/falsy values to boolean true/false
+                const isClub = !!fields['Club'];
+                const discount = fields['Descuento por Club o B2B'] || 0;
+                const isB2B = discount > 0 && !isClub; // Assume B2B if discount exists but not Club
+                const purchaseCount = fields['Cantidad de compras'] || fields['Purchase Count'] || 0;
+                const isFrequent = purchaseCount >= FREQUENT_PURCHASE_THRESHOLD;
+
+                return {
+                    id: contacto.id, // Ensure you have a unique ID
+                    name: name,
+                    email: email,
+                    rut: rut,
+                    isClub: isClub,
+                    isB2B: isB2B,
+                    isFrequent: isFrequent,
+                    // Include any other fields needed for display or saving
+                    lastName: fields['Apellido'] || '',
+                    phone: fields['Celular'] || fields['Phone'] || '',
+                    instagram: fields['Instagram'] || '',
+                    address: fields['Dirección'] || fields['Address'] || '',
+                    country: fields['País'] || fields['Country'] || '',
+                    comments: fields['Comentarios'] || '',
+                    businessType: fields['Tipo Empresa'] || '',
+                    businessContact: fields['Persona de Contacto'] || '',
+                    // Add a flag to differentiate easily later if needed
+                    type: (fields['Tipo Cliente'] === 'Empresa' || isB2B) ? 'business' : 'individual'
+                };
+            });
+
+            // Initial filter and render
+            filterClients(clientSearchInput.value, activeFilter);
+
+        } catch (err) {
+            console.error('Error fetching contactos:', err);
+            searchDropdown.innerHTML = `<div class="no-results">Error al cargar clientes.</div>`;
+            searchDropdown.style.display = 'block';
+            isDropdownVisible = true;
+        }
+    }
+
+    // Function to filter clients based on search term and active filter
+    function filterClients(searchTerm, filterType) {
+        const term = searchTerm.toLowerCase().trim();
+        activeFilter = filterType; // Update global state
+
+        filteredContactos = allContactos.filter(contacto => {
+            // Apply filter first
+            let matchesFilter = false;
+            switch (filterType) {
+                case 'club': matchesFilter = contacto.isClub; break;
+                case 'b2b': matchesFilter = contacto.isB2B; break;
+                case 'frequent': matchesFilter = contacto.isFrequent; break;
+                case 'all':
+                default: matchesFilter = true; break;
+            }
+
+            if (!matchesFilter) return false;
+
+            // Apply search term if present
+            if (term) {
+                const nameMatch = contacto.name.toLowerCase().includes(term);
+                const emailMatch = contacto.email?.toLowerCase().includes(term); // Optional chaining for email
+                const rutMatch = contacto.rut?.replace(/[.-]/g, '').includes(term.replace(/[.-]/g, '')); // Match cleaned RUT
+                return nameMatch || emailMatch || rutMatch;
+            }
+
+            return true; // Matches filter and no search term
+        });
+
+        renderClientOptions(filteredContactos);
+    }
+
+    // Function to render client options in the dropdown
+    function renderClientOptions(clients) {
+        searchDropdown.innerHTML = ''; // Clear previous results
+
+        if (clients.length > 0) {
+            clients.forEach(client => {
+                const option = document.createElement('div');
+                option.classList.add('client-option');
+                option.dataset.id = client.id; // Store ID on the element
+                option.dataset.name = client.name; // Store name for easy access
+
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = client.name;
+
+                const detailsDiv = document.createElement('div');
+                detailsDiv.classList.add('client-option-details');
+
+                if (client.isClub) {
+                    const badge = document.createElement('span');
+                    badge.classList.add('client-badge', 'club');
+                    badge.textContent = 'Club';
+                    detailsDiv.appendChild(badge);
+                }
+                if (client.isB2B) {
+                    const badge = document.createElement('span');
+                    badge.classList.add('client-badge', 'b2b');
+                    badge.textContent = 'B2B';
+                    detailsDiv.appendChild(badge);
+                }
+                 if (client.isFrequent) {
+                    const badge = document.createElement('span');
+                    badge.classList.add('client-badge', 'frequent');
+                    badge.textContent = 'Frecuente';
+                    detailsDiv.appendChild(badge);
+                }
+
+                option.appendChild(nameSpan);
+                option.appendChild(detailsDiv);
+
+                // Add click listener to select the client
+                option.addEventListener('click', () => selectClient(client.id, client.name));
+
+                searchDropdown.appendChild(option);
+            });
+            searchDropdown.style.display = 'block';
+            isDropdownVisible = true;
+        } else if (clientSearchInput.value.length > 0 || activeFilter !== 'all') {
+            // Show "no results" only if a search or filter is active
+            searchDropdown.innerHTML = `<div class="no-results">No se encontraron clientes.</div>`;
+            searchDropdown.style.display = 'block';
+            isDropdownVisible = true;
+        } else {
+            // Hide dropdown if input is empty and filter is 'all'
+            searchDropdown.style.display = 'none';
+            isDropdownVisible = false;
+        }
+    }
+
+    // Function to handle selecting a client from the dropdown
+    function selectClient(id, name) {
+        clientSearchInput.value = name; // Set input value to the name
+        selectedClientIdInput.value = id; // Set the hidden ID input
+        searchDropdown.style.display = 'none'; // Hide the dropdown
+        isDropdownVisible = false;
+        clientSearchInput.classList.add('person-icon'); // Add the icon class
+
+        // Show selected client info and clear button
+        selectedClientNameSpan.textContent = name;
+        selectedClientDisplay.classList.remove('hidden');
+
+        // Optional: You might want to trigger a change event if other parts of the form depend on this
+        // selectedClientIdInput.dispatchEvent(new Event('change'));
+    }
+
+    // Function to clear the selected client
+    function clearClientSelection() {
+        clientSearchInput.value = '';
+        selectedClientIdInput.value = '';
+        selectedClientDisplay.classList.add('hidden');
+        selectedClientNameSpan.textContent = '';
+        clientSearchInput.classList.remove('person-icon');
+        clientSearchInput.focus(); // Put focus back on input
+        filterClients('', activeFilter); // Re-render dropdown based on filter
+        if(filteredContactos.length > 0) {
+             searchDropdown.style.display = 'block'; // Show dropdown if there are filtered results
+             isDropdownVisible = true;
+        }
+    }
+
+    // Function to toggle collapsible sections in the modal
+    function toggleCollapsible(contentId, headerElement) {
+        const content = document.getElementById(contentId);
+        if (content && headerElement) {
+            const isOpen = content.classList.contains('open');
+            if (isOpen) {
+                content.classList.remove('open');
+                content.style.maxHeight = '0px'; // Collapse
+                headerElement.classList.remove('open'); // For icon rotation
+            } else {
+                content.classList.add('open');
+                content.style.maxHeight = content.scrollHeight + 'px'; // Expand
+                headerElement.classList.add('open'); // For icon rotation
+            }
+        }
+    }
+
+    // Function to reset the new client modal form
+    function resetModalForm() {
+        newClientFormElement.reset(); // Reset native form elements
+
+        // Clear error messages and styles
+        const errorMessages = newClientModal.querySelectorAll('.error-message');
+        errorMessages.forEach(el => el.style.display = 'none');
+        const errorInputs = newClientModal.querySelectorAll('.input-error');
+        errorInputs.forEach(el => el.classList.remove('input-error'));
+
+        // Reset client type to default (individual)
+        clientTypeButtons.forEach(btn => btn.classList.remove('active'));
+        document.querySelector('.client-type-btn[data-type="individual"]').classList.add('active');
+        individualForm.classList.remove('hidden');
+        businessForm.classList.add('hidden');
+        modalClientTypeInput.value = 'Cliente Final'; // Or determine based on default active button
+
+        // Collapse extra sections
+        const collapsibleContents = newClientModal.querySelectorAll('.collapsible-content');
+        collapsibleContents.forEach(content => {
+            content.classList.remove('open');
+            content.style.maxHeight = '0px';
+        });
+         const collapsibleHeaders = newClientModal.querySelectorAll('.collapsible-header');
+         collapsibleHeaders.forEach(header => header.classList.remove('open'));
+
+        // Set default values if any (e.g., country)
+        document.getElementById('client-country').value = 'Chile';
+        document.getElementById('business-country').value = 'Chile';
+    }
+
+    // Function to validate the entire modal form before saving
+    function validateModalForm() {
+        let isValid = true;
+        const isBusiness = document.querySelector('.client-type-btn[data-type="business"]').classList.contains('active');
+
+        // Clear previous errors
+        const errorMessages = newClientModal.querySelectorAll('.error-message');
+        errorMessages.forEach(el => el.style.display = 'none');
+        const errorInputs = newClientModal.querySelectorAll('.input-error');
+        errorInputs.forEach(el => el.classList.remove('input-error'));
+
+
+        if (isBusiness) {
+            // --- Business Validation ---
+            const businessName = document.getElementById('business-name');
+            if (!businessName.value.trim()) {
+                showError('business-name', 'El nombre de la empresa es obligatorio.');
+                isValid = false;
+            }
+
+            const businessRut = document.getElementById('business-rut');
+            if (businessRut.value.trim() && !checkRut(businessRut.value)) {
+                showError('business-rut', 'Ingrese un RUT chileno válido (ej: 76123456-7).');
+                isValid = false;
+            }
+
+            const businessEmail = document.getElementById('business-email');
+            if (businessEmail.value.trim() && !validateEmail(businessEmail.value)) {
+                showError('business-email', 'Ingrese un email válido.');
+                isValid = false;
+            }
+
+            const businessPhone = document.getElementById('business-phone');
+            if (businessPhone.value.trim() && !validatePhone(businessPhone.value)) {
+                showError('business-phone', 'Ingrese un número de teléfono válido (ej: +56912345678).');
+                isValid = false;
+            }
+
+            const businessInstagram = document.getElementById('business-instagram');
+            if (businessInstagram.value.trim() && !validateInstagram(businessInstagram.value)) {
+                showError('business-instagram', 'Ingrese un nombre de usuario de Instagram válido.');
+                isValid = false;
+            }
+
+        } else {
+            // --- Individual Validation ---
+            const firstName = document.getElementById('client-firstname');
+            if (!firstName.value.trim()) {
+                showError('client-firstname', 'El nombre es obligatorio.');
+                isValid = false;
+            }
+
+            const clientRut = document.getElementById('client-rut');
+            if (clientRut.value.trim() && !checkRut(clientRut.value)) {
+                showError('client-rut', 'Ingrese un RUT chileno válido (ej: 12345678-9).');
+                isValid = false;
+            }
+
+            const clientEmail = document.getElementById('client-email');
+            if (clientEmail.value.trim() && !validateEmail(clientEmail.value)) {
+                showError('client-email', 'Ingrese un email válido.');
+                isValid = false;
+            }
+
+            const clientPhone = document.getElementById('client-phone');
+            if (clientPhone.value.trim() && !validatePhone(clientPhone.value)) {
+                showError('client-phone', 'Ingrese un número de celular válido (ej: +56912345678).');
+                isValid = false;
+            }
+
+            const clientInstagram = document.getElementById('client-instagram');
+            if (clientInstagram.value.trim() && !validateInstagram(clientInstagram.value)) {
+                showError('client-instagram', 'Ingrese un nombre de usuario de Instagram válido.');
+                isValid = false;
+            }
+        }
+
+        return isValid;
+    }
+
+     // Function to handle saving the new client
+     async function saveNewClient() {
+        if (!validateModalForm()) {
+            console.log("Modal validation failed.");
+            // Find the first element with an error and scroll to it if needed
+            const firstError = newClientModal.querySelector('.input-error');
+            if (firstError) {
+                 firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                 firstError.focus();
+            }
+            return; // Stop if validation fails
+        }
+
+        saveClientBtn.disabled = true; // Prevent double clicks
+        saveClientBtn.textContent = 'Guardando...';
+
+        const formData = new FormData(newClientFormElement);
+        const clientData = {};
+        formData.forEach((value, key) => {
+             // Clean up Instagram username (remove @ before saving)
+             if ((key === 'client-instagram' || key === 'business-instagram') && value.startsWith('@')) {
+                 clientData[key] = value.substring(1);
+             } else {
+                 clientData[key] = value.trim();
+             }
+        });
+
+        // Determine type based on the hidden input set by buttons
+        const clientType = modalClientTypeInput.value; // e.g., "Cliente Final" or "Empresa"
+        clientData['Tipo Cliente'] = clientType; // Add type to data object
+
+        console.log("Saving new client:", clientData);
+
+        // --- Replace with your actual API call ---
+        try {
+            // Example using fetch to POST data
+            const response = await fetch(API_URL, { // Assuming the same endpoint handles POST
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                     // Add any necessary auth headers like 'Authorization': 'Bearer YOUR_TOKEN'
+                 },
+                 body: JSON.stringify({ fields: clientData }) // Structure according to your API needs
+            });
+
+            if (!response.ok) {
+                 const errorData = await response.json().catch(() => ({ message: 'Error desconocido al guardar.' }));
+                 throw new Error(`Error ${response.status}: ${errorData.message || response.statusText}`);
+            }
+
+            const newClient = await response.json(); // Get the newly created client data from response
+
+            // Success!
+            console.log("Client saved successfully:", newClient);
+            newClientModal.style.display = 'none'; // Close modal
+            resetModalForm(); // Reset the form for next time
+
+            // Add the new client to the local list and re-render/select it
+            // Assuming newClient has the same structure as fetched clients
+            const processedNewClient = { // Process it like fetched contacts
+                id: newClient.id,
+                name: newClient.fields['Nombre Completo'] || newClient.fields['Nombre'] || 'Nuevo Cliente',
+                email: newClient.fields['Email'] || '',
+                rut: newClient.fields['RUT'] || '',
+                isClub: !!newClient.fields['Club'],
+                discount: newClient.fields['Descuento por Club o B2B'] || 0,
+                isB2B: (newClient.fields['Descuento por Club o B2B'] || 0) > 0 && !newClient.fields['Club'],
+                purchaseCount: newClient.fields['Cantidad de compras'] || 0,
+                isFrequent: (newClient.fields['Cantidad de compras'] || 0) >= FREQUENT_PURCHASE_THRESHOLD,
+                // Add other fields if needed
+                type: newClient.fields['Tipo Cliente'] === 'Empresa' ? 'business' : 'individual'
+            };
+            allContactos.push(processedNewClient);
+
+            // Select the newly added client
+            filterClients('', 'all'); // Reset filter to all to ensure it appears
+            // Set the active filter back if needed, or just leave it at 'all'
+            setActiveFilterTag('all');
+            selectClient(processedNewClient.id, processedNewClient.name);
+
+
+        } catch (error) {
+            console.error("Error saving client:", error);
+            // Display error to user (e.g., in the modal or as a toast notification)
+             showError('save-client', `Error al guardar: ${error.message}`); // Add a dummy element or specific error display area
+             // For demonstration, re-enable button with error message
+             saveClientBtn.disabled = false;
+             saveClientBtn.textContent = 'Reintentar Guardar';
+
+        } finally {
+             // Ensure button is re-enabled if it wasn't handled in catch
+             if (saveClientBtn.disabled) {
+                 saveClientBtn.disabled = false;
+                 saveClientBtn.textContent = 'Guardar Cliente';
+             }
+        }
+        // --- End API call ---
+    }
+
+
+     // Helper to programmatically set the active filter tag
+    function setActiveFilterTag(filterValue) {
+        filterTagsContainer.querySelectorAll('.filter-tag').forEach(t => {
+            if (t.dataset.filter === filterValue) {
+                t.classList.add('active');
+            } else {
+                t.classList.remove('active');
+            }
+        });
+        activeFilter = filterValue;
+    }
+
+    // --- Event Listeners ---
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchContacts(); // Fetch contacts when the page loads
+        setActiveFilterTag('all'); // Set 'Todos' as active initially
+
+        // Search input handler
+        clientSearchInput.addEventListener('input', function() {
+            filterClients(this.value, activeFilter);
+            // If user clears input, keep dropdown open if a filter is active
+            if (!this.value && activeFilter !== 'all' && filteredContactos.length > 0) {
+                 searchDropdown.style.display = 'block';
+                 isDropdownVisible = true;
+            } else if (!this.value && activeFilter === 'all') {
+                 searchDropdown.style.display = 'none';
+                 isDropdownVisible = false;
+            }
+
+            // If typing after selection, clear selection
+             if (selectedClientIdInput.value) {
+                 clearClientSelection();
+                 // Re-filter immediately after clearing
+                 filterClients(this.value, activeFilter);
+             }
+
+             // If input has value, remove icon (optional, depends on desired UX)
+             // if (this.value) clientSearchInput.classList.remove('person-icon');
+        });
+
+         // Add focus listener to show dropdown if needed
+         clientSearchInput.addEventListener('focus', () => {
+             // Show dropdown on focus only if there's something to show
+             // or if input has text
+             if (filteredContactos.length > 0 && (clientSearchInput.value || activeFilter !== 'all')) {
+                 searchDropdown.style.display = 'block';
+                 isDropdownVisible = true;
+             }
+         });
+
+
+        // Filter tag click handler
+        filterTagsContainer.addEventListener('click', function(event) {
+             if (event.target.classList.contains('filter-tag')) {
+                 const newFilter = event.target.dataset.filter;
+                 setActiveFilterTag(newFilter);
+                 filterClients(clientSearchInput.value, newFilter); // Re-filter with current search term
+             }
+         });
+
+         // Clear selection button
+         clearSelectionBtn.addEventListener('click', clearClientSelection);
+
+        // --- Modal Event Listeners ---
+        newClientBtn.addEventListener('click', () => {
+            resetModalForm(); // Ensure form is clean before showing
+            newClientModal.style.display = 'flex';
+            document.getElementById('client-firstname').focus(); // Focus first field
+        });
+
+        cancelClientBtn.addEventListener('click', () => {
+            newClientModal.style.display = 'none';
+            resetModalForm(); // Also reset on cancel
+        });
+
+        saveClientBtn.addEventListener('click', saveNewClient);
+
+        // Client type switcher
+        clientTypeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                clientTypeButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                const type = this.dataset.type;
+
+                if(type === 'business') {
+                    individualForm.classList.add('hidden');
+                    businessForm.classList.remove('hidden');
+                    modalClientTypeInput.value = 'Empresa'; // Set type for saving
+                    document.getElementById('business-name').focus();
+                } else {
+                    businessForm.classList.add('hidden');
+                    individualForm.classList.remove('hidden');
+                    modalClientTypeInput.value = 'Cliente Final'; // Set type for saving
+                    document.getElementById('client-firstname').focus();
+                }
+                // Clear validation errors when switching
+                const errorMessages = newClientModal.querySelectorAll('.error-message');
+                errorMessages.forEach(el => el.style.display = 'none');
+                const errorInputs = newClientModal.querySelectorAll('.input-error');
+                errorInputs.forEach(el => el.classList.remove('input-error'));
+            });
+        });
+
+        // Collapsible section toggles
+        individualCollapsibleHeader.addEventListener('click', () => toggleCollapsible('individual-extra-info', individualCollapsibleHeader));
+        businessCollapsibleHeader.addEventListener('click', () => toggleCollapsible('business-extra-info', businessCollapsibleHeader));
+
+
+        // --- Live Validation Listeners (on blur) ---
+        const fieldsToValidate = [
+            { id: 'client-rut', validator: checkRut, message: 'RUT inválido.' },
+            { id: 'business-rut', validator: checkRut, message: 'RUT inválido.' },
+            { id: 'client-email', validator: validateEmail, message: 'Email inválido.' },
+            { id: 'business-email', validator: validateEmail, message: 'Email inválido.' },
+            { id: 'client-phone', validator: validatePhone, message: 'Celular inválido.' },
+            { id: 'business-phone', validator: validatePhone, message: 'Celular inválido.' },
+            { id: 'client-instagram', validator: validateInstagram, message: 'Usuario de Instagram inválido.', addAt: true },
+            { id: 'business-instagram', validator: validateInstagram, message: 'Usuario de Instagram inválido.', addAt: true },
+             // Add required field validation on blur too if desired
+             { id: 'client-firstname', validator: (val) => val.trim() !== '', message: 'Nombre es obligatorio.' },
+             { id: 'business-name', validator: (val) => val.trim() !== '', message: 'Nombre empresa es obligatorio.' },
+        ];
+
+        fieldsToValidate.forEach(({ id, validator, message, addAt }) => {
+            const inputElement = document.getElementById(id);
+            if (inputElement) {
+                inputElement.addEventListener('blur', function() {
+                    let value = this.value.trim();
+                    // Automatically add @ for instagram if needed
+                    if (addAt && value && !value.startsWith('@')) {
+                        value = '@' + value;
+                        this.value = value; // Update input field
+                    }
+
+                    if (value && !validator(value)) { // Only validate non-empty optional fields, always validate required
+                        showError(id, message);
+                    } else {
+                        hideError(id);
+                    }
+                });
+                 // Clear error on input change after blur
+                 inputElement.addEventListener('input', function() {
+                     // Check if it currently has error class to avoid removing valid state styles
+                     if (this.classList.contains('input-error')) {
+                         hideError(id);
+                     }
+                 });
+            }
+        });
+
+         // --- Click Outside to Close Dropdown ---
+         document.addEventListener('click', function(event) {
+             const isClickInsideSearch = clientSearchInput.contains(event.target);
+             const isClickInsideDropdown = searchDropdown.contains(event.target);
+
+             if (!isClickInsideSearch && !isClickInsideDropdown && isDropdownVisible) {
+                 searchDropdown.style.display = 'none';
+                 isDropdownVisible = false;
+             }
+         });
+
+    }); // End DOMContentLoaded
+
+  </script>
+
+</body>
+</html>

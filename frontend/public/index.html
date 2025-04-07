@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+
+  <style>
+    .new-client-modal {
+      display: none;
+      /* ... other modal styles ... */
+    }
+    .new-client-modal.is-open {
+      display: flex;
+    }
+    
+    .loading-indicator {
+      display: none;
+      /* Add loading spinner styles */
+    }
+    .loading-indicator.active {
+      display: block;
+    }
+  </style>
+  
+  <!-- In body section - ensure proper template structure -->
+  <template id="wine-subform-template">
+    <div class="wine-subform-item border border-gray-200 rounded p-4 mb-4 relative">
+      <button type="button" class="remove-wine-subform-btn absolute top-2 right-2 text-red-500 hover:text-red-700 text-xs font-bold">
+        &times; Quitar
+      </button>
+      <div class="mb-2">
+        <label class="block text-xs font-medium text-gray-600 mb-1 required-field">Producto</label>
+        <select name="wine_id[]" class="wine-select w-full px-3 py-2 border border-gray-300 rounded focus:ring-primary focus:border-primary text-sm" required>
+          <option value="" disabled selected>Seleccione un vino</option>
+        </select>
+        <div class="error-message">Campo requerido</div>
+      </div>
+      <!-- Rest of wine subform fields -->
+    </div>
+  </template>
+  
+  <!-- At end of body before closing tag -->
+  <script src="scripts/clientSearch.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Element declarations with null checks
+    const getElement = (id, errMsg) => {
+      const el = document.getElementById(id);
+      if (!el) console.error(errMsg);
+      return el;
+    };
+  
+    // Core elements
+    const salesForm = getElement('sales-form', 'Form element not found');
+    const wineTemplate = getElement('wine-subform-template', 'Wine template missing!');
+    const newClientModal = getElement('new-client-modal', 'Modal element missing!');
+    const newClientBtn = getElement('new-client-btn', 'New client button missing!');
+  
+    if (!salesForm || !wineTemplate || !newClientModal || !newClientBtn) return;
+  
+    // Initialize Client Search
+    try {
+      new ClientSearch();
+    } catch (e) {
+      console.error('ClientSearch initialization failed:', e);
+    }
+  
+    // Wine Subform Management
+    const wineSubformContainer = getElement('wine-subform-container', 'Wine container missing');
+    const addWineSubformItem = () => {
+      if (!wineTemplate.content) {
+        console.error("Wine template content missing");
+        return;
+      }
+      
+      const clone = wineTemplate.content.cloneNode(true);
+      const newItem = clone.querySelector('.wine-subform-item');
+      
+      if (!newItem) {
+        console.error("Could not clone wine subform item");
+        return;
+      }
+  
+      // Initialize wine select
+      const wineSelect = newItem.querySelector('.wine-select');
+      if (wineSelect) {
+        populateWineSelect(wineSelect);
+      } else {
+        console.error("Wine select missing in template");
+      }
+  
+      wineSubformContainer.appendChild(newItem);
+      updateValidation();
+    };
+  
+    // Data Fetching
+    const fetchSalespersons = async () => {
+      try {
+        const response = await fetch('/api/vendors');
+        const data = await response.json();
+        // Populate salesperson select
+      } catch (e) {
+        console.error('Failed to load salespersons:', e);
+      }
+    };
+  
+    const fetchWinesForTemplate = async () => {
+      try {
+        const response = await fetch('/api/wines');
+        const data = await response.json();
+        // Process wine data
+      } catch (e) {
+        console.error('Failed to load wines:', e);
+      }
+    };
+  
+    // Modal Handling
+    const modalActions = {
+      open: () => newClientModal.classList.add('is-open'),
+      close: () => newClientModal.classList.remove('is-open')
+    };
+  
+    // Event Listeners
+    newClientBtn.addEventListener('click', modalActions.open);
+    document.querySelectorAll('[data-modal-close]').forEach(btn => {
+      btn.addEventListener('click', modalActions.close);
+    });
+  
+    // Initial Setup
+    const initialize = async () => {
+      try {
+        await fetchSalespersons();
+        await fetchWinesForTemplate();
+        addWineSubformItem(); // Initial wine item
+      } catch (e) {
+        console.error('Initialization failed:', e);
+      }
+    };
+  
+    initialize();
+  });
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ingreso de Venta - Laberinto</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#9900ef',
+            secondary: '#f3e8ff',
+            pending: '#f59e0b',
+            completed: '#10b981',
+            cancelled: '#ef4444'
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Existing styles */
+    .wine-bottle-icon {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239900ef"><path d="M12 14c1.66 0 3-1.34 3-3V3h1.5v8c0 2.49-2.01 4.5-4.5 4.5S7.5 13.49 7.5 11V3H9v8c0 1.66 1.34 3 3 3zm-4 5v-3c0-1.1.9-2 2-2s2 .9 2 2v3h4v1H6v-1h2z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: 12px center;
+      background-size: 20px;
+      padding-left: 40px !important;
+    }
+    .percent-icon {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239900ef"><path d="M7 21q-2.075 0-3.537-1.463Q2 18.075 2 16q0-2.075 1.463-3.538Q4.925 11 7 11q1.2 0 2.225.55 1.025.55 1.775 1.45 0-2.075 1.463-3.538Q13.925 8 16 8q2.075 0 3.538 1.462Q21 10.925 21 13q0 2.075-1.462 3.537Q18.075 18 16 18h-9q-.825 0-1.412-.587Q5 16.825 5 16v-.675q-.6-.6-.95-1.4-.35-.8-.35-1.7 0-1.65 1.175-2.825Q5.05 8 6.7 8h10.575l-1.05-1.05L17 5.9l3.1 3.1L17 12.1l-1.075-1.075 1.05-1.05H6.7q-1.05 0-1.875.825T4 12q0 1.05.625 1.875T6.1 14.925q.075.8.7 1.375.625.575 1.45.575h5.925q-.2-.275-.387-.5-.188-.225-.438-.5H7.475q-.2 0-.375-.075t-.35-.225l-1.4-1.4q-.2-.2-.2-.5t.2-.5l1.4-1.4q.15-.15.35-.225.2-.075.4-.075t.388.075q.187.075.337.225l1.4 1.4q.15.15.225.325.075.175.075.375 0 .2-.075.375T8.5 14.8l-.9.9q.125.5.125.938 0 .437-.125.937l.6-.6q.2-.2.5-.2t.5.2l1.4 1.4q.2.2.2.5t-.2.5Z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: 12px center;
+      background-size: 20px;
+      padding-left: 40px !important;
+    }
+    .person-icon {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239900ef"><path d="M12 12q-1.65 0-2.825-1.175Q8 9.65 8 8q0-1.65 1.175-2.825Q10.35 4 12 4q1.65 0 2.825 1.175Q16 6.35 16 8q0 1.65-1.175 2.825Q13.65 12 12 12Zm-8 8v-2.8q0-.85.438-1.563.437-.712 1.162-1.087 1.55-.775 3.15-1.163Q10.35 14 12 14t3.25.387q1.6.388 3.15 1.163.725.375 1.162 1.087Q20 16.35 20 17.2V20Z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: 12px center;
+      background-size: 20px;
+      padding-left: 40px !important;
+    }
+    .select-wrapper {
+      position: relative;
+    }
+    .select-wrapper:after {
+      content: "▼";
+      font-size: 0.7rem;
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: #6b7280;
+    }
+    .progress-dot {
+      width: 12px;
+      height: 12px;
+      border: 2px solid #9900ef;
+    }
+    .progress-dot.active {
+      background-color: #9900ef;
+    }
+    #client-discount-hint {
+      transition: opacity 0.3s ease-in-out;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      position: relative;
+      z-index: 1;
+      background: transparent;
+    }
+    .client-option {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .client-option:hover {
+      background-color: #f3e8ff;
+    }
+    .client-option.active {
+      background-color: #e9d5ff;
+    }
+    .client-badge {
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 8px;
+    }
+    .client-badge.club {
+      background-color: #c084fc;
+      color: white;
+    }
+    .client-badge.b2b {
+      background-color: #8b5cf6;
+      color: white;
+    }
+    .search-dropdown {
+      position: absolute;
+      width: 100%;
+      max-height: 300px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 0 0 8px 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      z-index: 50;
+      display: none; /* Initially hidden */
+    }
+    .search-wrapper {
+      position: relative;
+    }
+    .search-input-container {
+      position: relative;
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af;
+      z-index: 10;
+    }
+    .filter-tags {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .filter-tag {
+      padding: 4px 10px;
+      border-radius: 16px;
+      font-size: 0.75rem;
+      background-color: #f3f4f6;
+      color: #4b5563;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-tag:hover {
+      background-color: #e5e7eb;
+    }
+    .filter-tag.active {
+      background-color: #9900ef;
+      color: white;
+    }
+    .no-results {
+      padding: 12px;
+      color: #6b7280;
+      font-style: italic;
+      text-align: center;
+    }
+    .new-client-modal {
+      display: none; /* Initially hidden */
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    /* Add display: flex when modal should be shown */
+    .new-client-modal.is-open {
+        display: flex;
+    }
+    .new-client-content {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px; /* Add padding */
+    }
+    .client-type-selector {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .client-type-btn {
+      padding: 12px 24px;
+      margin: 0 8px;
+      background: #f3e8ff;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .client-type-btn.active {
+      background: #9900ef;
+      color: white;
+    }
+    .client-form-section {
+      padding: 24px;
+    }
+    .collapsible-section {
+      margin-top: 16px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 16px;
+    }
+    .collapsible-header {
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+    .collapsible-content {
+      margin-top: 8px;
+      display: none;
+    }
+    .collapsible-content.open {
+      display: block;
+    }
+    .required-field::after {
+      content: "*";
+      color: #ef4444;
+      margin-left: 4px;
+    }
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .error-message {
+      color: #ef4444;
+      font-size: 0.75rem;
+      margin-top: 4px;
+      display: none;
+    }
+    .input-error {
+      border-color: #ef4444 !important;
+    }
+    /* --- Styles for Sleek Radio Buttons --- */
+    .radio-card-group input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .radio-card-group input[type="radio"]:focus + label {
+      outline: 2px solid #9900ef;
+      outline-offset: 2px;
+    }
+    .radio-card-group input[type="radio"]:checked + label {
+      border-color: #9900ef;
+      background-color: #f3e8ff;
+      box-shadow: 0 0 0 2px #9900ef;
+    }
+    /* --- End Styles for Sleek Radio Buttons --- */
+    .status-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .status-indicator.pending {
+      background-color: #f59e0b;
+    }
+    .status-indicator.completed {
+      background-color: #10b981;
+    }
+    .status-indicator.cancelled {
+      background-color: #ef4444;
+    }
+    .document-number-field {
+      display: none; /* Initially hidden */
+    }
+    /* Add display: block when field should be shown */
+    .document-number-field.is-visible {
+        display: block;
+    }
+    .payment-method-emoji {
+      margin-right: 6px;
+      font-size: 1.1em;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-2xl mx-auto p-4 md:p-6">
+    <!-- Progress Bar (unchanged) -->
+    <div class="flex justify-between items-center mb-8 relative">
+        <div class="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 -z-10" style="margin-top: -1px;"></div>
+        <div class="flex flex-col items-center">
+          <div class="progress-dot active rounded-full mb-2"></div>
+          <span class="text-xs font-medium">Venta</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <div class="progress-dot rounded-full mb-2"></div>
+          <span class="text-xs text-gray-500">Revisión</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <div class="progress-dot rounded-full mb-2"></div>
+          <span class="text-xs text-gray-500">Listo</span>
+        </div>
+      </div>
+    <!-- Form Container -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+      <!-- Header (unchanged) -->
+      <div class="bg-gradient-to-r from-primary to-purple-600 p-6">
+        <h1 class="text-2xl font-bold text-white flex items-center">
+          <i class="fas fa-wine-bottle mr-3"></i>
+          Ingreso de Venta
+        </h1>
+      </div>
+      <!-- Form Content -->
+      <div class="p-6">
+        <form id="sales-form" class="space-y-6">
+          <!-- Vendedor Field -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label for="salesperson" class="block text-sm font-medium text-gray-700 mb-1 required-field">Vendedor</label>
+              <div class="select-wrapper">
+                <select id="salesperson" name="salesperson" class="person-icon w-full rounded-lg border-gray-300 focus:border-primary focus:ring-primary py-2 px-3 border shadow-sm pl-10" required>
+                  <option value="" disabled selected>Seleccione un vendedor</option>
+                  <!-- Salesperson options dynamically loaded -->
+                  <!-- Example: <option value="1">Juan Perez</option> -->
+                </select>
+                <div class="error-message" id="salesperson-error">Campo requerido</div>
+              </div>
+            </div>
+            <!-- Fecha de Venta -->
+            <div>
+              <label for="sale-date" class="block text-sm font-medium text-gray-700 mb-1">Fecha de venta</label>
+              <div class="relative">
+                <input type="text" id="sale-date" name="sale-date" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-primary py-2 px-3 border shadow-sm" placeholder="DD/MM/YYYY">
+                <!-- No need for italic format hint if using flatpickr -->
+              </div>
+            </div>
+          </div>
+          <!-- Enhanced Cliente Field -->
+          <div class="search-wrapper">
+            <div class="flex justify-between items-center mb-1">
+              <label for="client" class="block text-sm font-medium text-gray-700">Cliente</label>
+              <button type="button" id="new-client-btn" class="text-xs text-primary hover:underline">+ Nuevo Cliente</button>
+            </div>
+            <div class="search-input-container">
+              <i class="fas fa-search search-icon"></i>
+              <input type="text" id="client" name="client" placeholder="Buscar cliente por nombre o RUT..."
+                     class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-primary py-2 pl-10 pr-3 border shadow-sm" autocomplete="off">
+              <input type="hidden" id="client-id" name="client-id">
+            </div>
+            <!-- Filter tags (unchanged) -->
+            <div class="filter-tags">
+              <div class="filter-tag" data-filter="club">Club</div>
+              <div class="filter-tag" data-filter="b2b">B2B</div>
+              <div class="filter-tag" data-filter="frequent">Frecuentes</div>
+              <div class="filter-tag active" data-filter="all">Todos</div>
+            </div>
+            <!-- Dropdown with search results -->
+            <div id="search-dropdown" class="search-dropdown">
+                <!-- Example Result Item -->
+                <!-- <div class="client-option" data-id="123">
+                    <span>Cliente Ejemplo Uno</span>
+                    <span class="client-badge club">Club</span>
+                </div> -->
+                 <div class="no-results" style="display: none;">No se encontraron clientes</div>
+            </div>
+          </div>
+          <!-- Descuento Field -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label for="discount" class="block text-sm font-medium text-gray-700 required-field">Descuento</label>
+              <div id="client-discount-hint" class="hidden text-xs text-blue-600 italic px-2 py-1 bg-blue-50 rounded">
+                <!-- Hint text populated dynamically -->
+              </div>
+            </div>
+            <div>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">%</span>
+                <input type="number" id="discount" name="discount" placeholder="0" min="0" max="100" step="1" value="0" class="pl-8 w-full rounded-lg border-gray-300 focus:border-primary focus:ring-primary py-2 px-3 border shadow-sm" required>
+                 <div class="error-message" id="discount-error">Campo requerido</div>
+              </div>
+              <p class="text-xs text-gray-500 mt-1 italic">Descuento efectivo a aplicar en la venta (0-100)</p>
+            </div>
+          </div>
+          <!-- Vinos Subform Section -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2 required-field">Vinos</label>
+            <div id="wine-subform-container" class="space-y-3">
+              <!-- Dynamic wine subform items will appear here -->
+            </div>
+             <div class="error-message" id="wines-error">Debe agregar al menos un vino</div>
+            <button type="button" id="add-wine-subform-btn" class="mt-2 px-4 py-2 bg-secondary hover:bg-purple-200 text-primary rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-sm font-medium">
+             + Agregar Vino
+            </button>
+            <!-- Template for wine subform item -->
+            <template id="wine-subform-template">
+              <div class="wine-subform-item border border-gray-200 rounded p-4 mb-4 relative">
+                 <button type="button" class="remove-wine-subform-btn absolute top-2 right-2 text-red-500 hover:text-red-700 text-xs font-bold">
+                  &times; Quitar
+                </button>
+                <!-- Wine Product Selection -->
+                <div class="mb-2">
+                  <label class="block text-xs font-medium text-gray-600 mb-1 required-field">Producto</label>
+                  <select name="wine_id[]" class="wine-select w-full px-3 py-2 border border-gray-300 rounded focus:ring-primary focus:border-primary text-sm" required>
+                    <option value="" disabled selected>Seleccione un vino</option>
+                    <!-- Wine options populated dynamically -->
+                    <!-- Example: <option value="W001" data-price="10000">Vino Tinto Reserva</option> -->
+                  </select>
+                   <div class="error-message">Campo requerido</div>
+                </div>
+                <!-- Quantity Field -->
+                <div class="mb-2">
+                  <label class="block text-xs font-medium text-gray-600 mb-1 required-field">Cantidad</label>
+                  <input type="number" name="wine_quantity[]" min="1" value="1" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-primary focus:border-primary text-sm" required>
+                   <div class="error-message">Debe ser mayor a 0</div>
+                </div>
+                <!-- Optional Custom Price Field -->
+                <div class="mb-2">
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Precio unitario (opcional)</label>
+                  <input type="number" name="wine_custom_price[]" min="0" step="any" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-primary focus:border-primary text-sm" placeholder="Precio actual: $...">
+                   <div class="error-message">Debe ser 0 o mayor</div>
+                </div>
+              </div>
+            </template>
+          </div>
+          <!-- Enhanced Estado de la Orden (Sleek Style) (unchanged) -->
+          <div>
+             <label class="block text-sm font-medium text-gray-700 mb-2">Estado de la Orden</label>
+             <div class="radio-card-group grid grid-cols-1 md:grid-cols-3 gap-3">
+               <div>
+                 <input type="radio" id="status-pending" name="order-status" value="pending" checked>
+                 <label for="status-pending" class="flex items-center justify-center text-center p-3 border border-gray-300 rounded-lg cursor-pointer transition duration-200 ease-in-out hover:bg-gray-50">
+                   <span class="status-indicator pending"></span>
+                   <span class="text-sm font-medium text-gray-700">Pendiente</span>
+                 </label>
+               </div>
+               <div>
+                 <input type="radio" id="status-completed" name="order-status" value="completed">
+                 <label for="status-completed" class="flex items-center justify-center text-center p-3 border border-gray-300 rounded-lg cursor-pointer transition duration-200 ease-in-out hover:bg-gray-50">
+                   <span class="status-indicator completed"></span>
+                   <span class="text-sm font-medium text-gray-700">Completada</span>
+                 </label>
+               </div>
+               <div>
+                 <input type="radio" id="status-cancelled" name="order-status" value="cancelled">
+                 <label for="status-cancelled" class="flex items-center justify-center text-center p-3 border border-gray-300 rounded-lg cursor-pointer transition duration-200 ease-in-out hover:bg-gray-50">
+                   <span class="status-indicator cancelled"></span>
+                   <span class="text-sm font-medium text-gray-700">Cancelada</span>
+                 </label>
+               </div>
+             </div>
+           </div>
+          <!-- Forma de Pago (Sleek Style) (unchanged) -->
+          <div>
+             <label class="block text-sm font-medium text-gray-700 mb-2">Forma de Pago</label>
+             <div class="radio-card-group flex flex-wrap gap-3">
+               <div>
+                 <input type="radio" id="payment-cash" name="payment-method" value="cash" checked>
+                 <label for="payment-cash" class="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer transition duration-200 ease-in-out hover:bg-gray-50">
+                   <span class="payment-method-emoji">💰</span>
+                   <span class="ml-1 text-sm font-medium text-gray-700">Efectivo</span>
+                 </label>
+               </div>
+               <div>
+                 <input type="radio" id="payment-transfer" name="payment-method" value="transfer">
+                 <label for="payment-transfer" class="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer transition duration-200 ease-in-out hover:bg-gray-50">
+                   <span class="payment-method-emoji">🏦</span>
+                   <span class="ml-1 text-sm font-medium text-gray-700">Transferencia</span>
+                 </label>
+               </div>
+               <div>
+                 <input type="radio" id="payment-tuu" name="payment-method" value="tuu">
+                 <label for="payment-tuu" class="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer transition duration-200 ease-in-out hover:bg-gray-50">
+                   <span class="payment-method-emoji">💳</span>
+                   <span class="ml-1 text-sm font-medium text-gray-700">Tuu</span>
+                 </label>
+               </div>
+                <!-- Add more payment methods if needed -->
+             </div>
+           </div>
+          <!-- SII Document Type -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Documento SII</label>
+            <div class="flex flex-wrap gap-4">
+              <label class="inline-flex items-center">
+                <input type="radio" name="document-type" value="boleta" class="h-4 w-4 text-primary focus:ring-primary border-gray-300">
+                <span class="ml-2 text-sm">Boleta</span>
+              </label>
+              <label class="inline-flex items-center">
+                <input type="radio" name="document-type" value="factura" class="h-4 w-4 text-primary focus:ring-primary border-gray-300">
+                <span class="ml-2 text-sm">Factura</span>
+              </label>
+              <label class="inline-flex items-center">
+                <input type="radio" name="document-type" value="none" class="h-4 w-4 text-primary focus:ring-primary border-gray-300" checked>
+                <span class="ml-2 text-sm">Ninguno</span>
+              </label>
+            </div>
+          </div>
+          <!-- Dynamic document number field -->
+          <div id="document-number-container" class="document-number-field mt-4">
+            <label id="document-number-label" for="document-number" class="block text-sm font-medium text-gray-700 mb-1 required-field">Número de Boleta</label>
+            <input type="number" id="document-number" name="document-number" class="w-full rounded-lg border-gray-300 focus:border-primary focus:ring-primary py-2 px-3 border shadow-sm" placeholder="Ingrese el número" min="1">
+             <div class="error-message" id="document-number-error">Campo requerido</div>
+          </div>
+          <!-- Comentario Opcional -->
+          <div>
+            <label for="comments" class="block text-sm font-medium text-gray-700 mb-1">Comentarios</label>
+            <textarea id="comments" name="comments" rows="2" maxlength="200" class="w-full text-sm rounded-lg border-gray-300 focus:border-primary focus:ring-primary py-2 px-3 border shadow-sm" placeholder="Añadir nota interna (opcional)"></textarea>
+            <p class="text-xs text-gray-500 mt-1 text-right"><span id="char-count">0</span>/200</p>
+          </div>
+          <!-- Form Actions -->
+          <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+              <div>
+                <!-- Placeholder for potential status messages -->
+                <span id="form-status-message" class="text-sm"></span>
+              </div>
+              <div class="flex gap-3">
+                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                  Cancelar
+                </button>
+                <button type="submit" id="review-btn" class="px-6 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                  Revisar Venta
+                </button>
+              </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Client Modal -->
+  <div id="new-client-modal" class="new-client-modal">
+    <div class="new-client-content">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold text-gray-800">Crear Nuevo Cliente</h2>
+           <button type="button" id="close-modal-btn" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+
+         <!-- Simple Modal Content Placeholder -->
+         <p class="text-gray-600">Aquí iría el formulario para crear un nuevo cliente (Club o B2B).</p>
+         <p class="mt-2 text-sm text-gray-500">Este es un marcador de posición. La lógica completa del formulario del modal no está incluida aquí.</p>
+
+          <!-- Add form fields for new client here -->
+
+         <div class="form-actions mt-6">
+            <button type="button" id="cancel-modal-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">Cancelar</button>
+            <button type="button" id="save-client-btn" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-purple-700">Guardar Cliente</button>
+        </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- Constants ---
+        const salesForm = document.getElementById('sales-form');
+        const salespersonSelect = document.getElementById('salesperson');
+        const saleDateInput = document.getElementById('sale-date');
+        const clientInput = document.getElementById('client');
+        const clientIdInput = document.getElementById('client-id');
+        const searchDropdown = document.getElementById('search-dropdown');
+        const discountInput = document.getElementById('discount');
+        const clientDiscountHint = document.getElementById('client-discount-hint');
+        const addWineBtn = document.getElementById('add-wine-subform-btn');
+        const wineSubformContainer = document.getElementById('wine-subform-container');
+        const wineTemplate = document.getElementById('wine-subform-template');
+        const commentsInput = document.getElementById('comments');
+        const charCountSpan = document.getElementById('char-count');
+        const siiRadioButtons = document.querySelectorAll('input[name="document-type"]');
+        const docNumberContainer = document.getElementById('document-number-container');
+        const docNumberInput = document.getElementById('document-number');
+        const docNumberLabel = document.getElementById('document-number-label');
+        const newClientBtn = document.getElementById('new-client-btn');
+        const newClientModal = document.getElementById('new-client-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const cancelModalBtn = document.getElementById('cancel-modal-btn');
+        const filterTags = document.querySelectorAll('.filter-tag');
+
+        // --- Initialization ---
+        flatpickr(saleDateInput, {
+            dateFormat: "d/m/Y",
+            defaultDate: "today",
+            locale: "es"
+        });
+
+        // Fetch initial data (Salespersons, Wines) - Placeholder
+        fetchSalespersons();
+        fetchWinesForTemplate(); // Fetch wines to populate the template's select
+
+        // Add initial wine subform item
+        addWineSubformItem();
+        updateWineSectionValidationState(); // Check if wines are required initially
+
+        // --- Event Listeners ---
+
+        // Add Wine Button
+        addWineBtn.addEventListener('click', () => {
+            addWineSubformItem();
+            updateWineSectionValidationState();
+        });
+
+        // Remove Wine Button (Delegated)
+        wineSubformContainer.addEventListener('click', function(event) {
+            const removeBtn = event.target.closest('.remove-wine-subform-btn');
+            if (removeBtn) {
+                const item = removeBtn.closest('.wine-subform-item');
+                if (item) {
+                    item.remove();
+                    updateWineSectionValidationState(); // Re-check after removing
+                }
+            }
+        });
+
+        // SII Document Type Change
+        siiRadioButtons.forEach(radio => {
+            radio.addEventListener('change', handleSiiChange);
+        });
+
+        // Comments Character Counter
+        commentsInput.addEventListener('input', () => {
+            const count = commentsInput.value.length;
+            charCountSpan.textContent = count;
+        });
+
+        // New Client Modal Buttons
+        newClientBtn.addEventListener('click', openNewClientModal);
+        closeModalBtn.addEventListener('click', closeNewClientModal);
+        cancelModalBtn.addEventListener('click', closeNewClientModal);
+        // Add listener for clicking outside the modal content to close it
+        newClientModal.addEventListener('click', (event) => {
+           if (event.target === newClientModal) { // Check if click is on the backdrop
+               closeNewClientModal();
+           }
+        });
+
+       // Client Search Input (Add focus/blur handlers)
+        clientInput.addEventListener('focus', () => {
+            // Potentially show dropdown immediately or trigger search
+             handleClientSearch(); // Trigger search on focus maybe?
+        });
+        clientInput.addEventListener('input', debounce(handleClientSearch, 300)); // Debounced search
+        clientInput.addEventListener('blur', () => {
+            // Delay hiding dropdown to allow clicking on results
+             setTimeout(() => {
+                if (!searchDropdown.matches(':hover')) { // Don't hide if mouse is over dropdown
+                    searchDropdown.style.display = 'none';
+                }
+            }, 200);
+        });
+
+        // Filter Tag Click
+        filterTags.forEach(tag => {
+           tag.addEventListener('click', () => {
+               filterTags.forEach(t => t.classList.remove('active'));
+               tag.classList.add('active');
+               handleClientSearch(); // Re-run search with new filter
+           });
+        });
+
+
+        // Form Submission
+        salesForm.addEventListener('submit', handleSubmit);
+
+        // --- Functions ---
+
+        function fetchSalespersons() {
+            // Placeholder: Fetch salesperson data from backend
+            console.log("Fetching salespersons...");
+            // Example data:
+            const salespersons = [
+                { id: 'SP001', name: 'Ana García' },
+                { id: 'SP002', name: 'Carlos López' },
+                { id: 'SP003', name: 'Beatriz Fernández' }
+            ];
+            salespersons.forEach(sp => {
+                const option = document.createElement('option');
+                option.value = sp.id;
+                option.textContent = sp.name;
+                salespersonSelect.appendChild(option);
+            });
+        }
+
+        let allWines = []; // Store fetched wines globally for reuse
+
+        function fetchWinesForTemplate() {
+            // Placeholder: Fetch wine data from backend
+             console.log("Fetching wines...");
+             // Example data:
+             allWines = [
+                 { id: 'W001', name: 'Laberinto Sauvignon Blanc', price: 12000 },
+                 { id: 'W002', name: 'Laberinto Pinot Noir', price: 15000 },
+                 { id: 'W003', name: 'Laberinto Cenizas Sauvignon Blanc', price: 18000 },
+                 { id: 'W004', name: 'Laberinto Arcillas Chardonnay', price: 22000 }
+             ];
+             // We'll populate the *next* select when adding an item
+        }
+
+        function populateWineSelect(selectElement) {
+            // Clear existing options (except the placeholder)
+            selectElement.innerHTML = '<option value="" disabled selected>Seleccione un vino</option>';
+             allWines.forEach(wine => {
+                 const option = document.createElement('option');
+                 option.value = wine.id;
+                 option.textContent = wine.name;
+                 option.dataset.price = wine.price; // Store price for reference
+                 selectElement.appendChild(option);
+             });
+
+             // Add listener to update placeholder price when wine is selected
+             selectElement.addEventListener('change', (event) => {
+                 const selectedOption = event.target.selectedOptions[0];
+                 const price = selectedOption.dataset.price;
+                 const priceInput = event.target.closest('.wine-subform-item').querySelector('input[name="wine_custom_price[]"]');
+                 if (price && priceInput) {
+                     priceInput.placeholder = `Precio actual: $${parseInt(price).toLocaleString('es-CL')}`;
+                 } else if (priceInput) {
+                     priceInput.placeholder = `Precio actual: $...`;
+                 }
+             });
+        }
+
+
+        function addWineSubformItem() {
+            if (!wineTemplate) {
+                console.error("Wine subform template not found!");
+                return;
+            }
+            const clone = document.importNode(wineTemplate.content, true);
+            const newSelect = clone.querySelector('.wine-select');
+            if (newSelect) {
+                 populateWineSelect(newSelect); // Populate the new select
+            } else {
+                console.error("Could not find select element in the wine template clone.");
+            }
+            wineSubformContainer.appendChild(clone);
+        }
+
+        function handleSiiChange() {
+            const selectedValue = document.querySelector('input[name="document-type"]:checked').value;
+            if (selectedValue === 'boleta' || selectedValue === 'factura') {
+                docNumberContainer.classList.add('is-visible');
+                docNumberLabel.textContent = `Número de ${selectedValue.charAt(0).toUpperCase() + selectedValue.slice(1)}`;
+                docNumberLabel.classList.add('required-field');
+                docNumberInput.required = true;
+            } else {
+                docNumberContainer.classList.remove('is-visible');
+                docNumberLabel.classList.remove('required-field');
+                docNumberInput.required = false;
+                docNumberInput.value = ''; // Clear value when hiding
+                clearError(docNumberInput); // Clear potential error
+            }
+        }
+
+        function openNewClientModal() {
+            newClientModal.classList.add('is-open');
+             // Potentially fetch data needed for the modal form here
+        }
+
+        function closeNewClientModal() {
+             newClientModal.classList.remove('is-open');
+             // Potentially clear/reset modal form fields here
+        }
+
+        function handleClientSearch() {
+            const searchTerm = clientInput.value.trim().toLowerCase();
+            const activeFilter = document.querySelector('.filter-tag.active')?.dataset.filter || 'all';
+            console.log(`Searching for "${searchTerm}", filter: ${activeFilter}`);
+            searchDropdown.style.display = 'block'; // Show dropdown
+            searchDropdown.innerHTML = ''; // Clear previous results
+
+            // --- Placeholder for actual client fetching/filtering ---
+            // Replace with actual API call
+            const mockClients = [
+                { id: 'C001', name: 'Cliente Frecuente Uno', type: 'club', tags: ['frequent'] },
+                { id: 'C002', name: 'Empresa B2B Ejemplo', type: 'b2b', tags: [] },
+                { id: 'C003', name: 'Otro Cliente Club', type: 'club', tags: [] },
+                { id: 'C004', name: 'Cliente Ocasional', type: 'normal', tags: [] }, // Example without specific type badge
+                { id: 'C005', name: 'Importante B2B', type: 'b2b', tags: ['frequent'] },
+            ];
+
+            let filteredClients = mockClients.filter(client => {
+                const nameMatch = client.name.toLowerCase().includes(searchTerm);
+                let filterMatch = true;
+                if (activeFilter === 'club') filterMatch = client.type === 'club';
+                else if (activeFilter === 'b2b') filterMatch = client.type === 'b2b';
+                else if (activeFilter === 'frequent') filterMatch = client.tags.includes('frequent');
+                // 'all' matches everything
+
+                return nameMatch && filterMatch;
+            });
+            // --- End Placeholder ---
+
+            if (filteredClients.length > 0) {
+                filteredClients.forEach(client => {
+                    const div = document.createElement('div');
+                    div.classList.add('client-option');
+                    div.dataset.id = client.id;
+                    div.dataset.name = client.name; // Store name for input field
+                    div.dataset.type = client.type; // Store type for discount hint
+                    div.innerHTML = `
+                        <span>${client.name}</span>
+                        ${client.type === 'club' ? '<span class="client-badge club">Club</span>' : ''}
+                        ${client.type === 'b2b' ? '<span class="client-badge b2b">B2B</span>' : ''}
+                         ${client.tags.includes('frequent') && activeFilter !== 'frequent' ? '<span class="client-badge" style="background-color:#eee; color:#555;margin-left:4px;">Frecuente</span>' : ''}
+                    `;
+                    div.addEventListener('mousedown', (e) => { // Use mousedown to register before blur hides dropdown
+                        e.preventDefault(); // Prevent input blur
+                        selectClient(client);
+                        searchDropdown.style.display = 'none';
+                    });
+                    searchDropdown.appendChild(div);
+                });
+                searchDropdown.querySelector('.no-results')?.remove(); // Remove no results message if present
+            } else {
+                 searchDropdown.innerHTML = '<div class="no-results">No se encontraron clientes</div>';
+            }
+        }
+
+        function selectClient(client) {
+            clientInput.value = client.name;
+            clientIdInput.value = client.id;
+            console.log("Selected Client:", client);
+
+             // Update discount hint (example logic)
+             let hintText = '';
+             if (client.type === 'club') {
+                 hintText = 'Cliente Club: Sugerido 15% dcto.';
+             } else if (client.type === 'b2b') {
+                 hintText = 'Cliente B2B: Revisar condiciones.';
+             }
+
+             if (hintText) {
+                 clientDiscountHint.textContent = hintText;
+                 clientDiscountHint.classList.remove('hidden');
+             } else {
+                 clientDiscountHint.classList.add('hidden');
+             }
+             searchDropdown.style.display = 'none'; // Hide dropdown after selection
+        }
+
+        function debounce(func, wait) {
+          let timeout;
+          return function executedFunction(...args) {
+            const later = () => {
+              clearTimeout(timeout);
+              func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+          };
+        }
+
+
+        // --- Validation ---
+        function validateForm() {
+            let isValid = true;
+            clearAllErrors();
+
+            // Vendedor
+            if (!salespersonSelect.value) {
+                showError(salespersonSelect, 'Campo requerido');
+                isValid = false;
+            }
+
+             // Descuento
+             const discountVal = parseFloat(discountInput.value);
+            if (discountInput.value === '' || isNaN(discountVal) || discountVal < 0 || discountVal > 100) {
+                 showError(discountInput, 'Ingrese un valor entre 0 y 100');
+                 isValid = false;
+            }
+
+            // Vinos (at least one item)
+            const wineItems = wineSubformContainer.querySelectorAll('.wine-subform-item');
+            if (wineItems.length === 0) {
+                showError(addWineBtn, 'Debe agregar al menos un vino', true); // Show error near the button
+                isValid = false;
+            } else {
+                // Validate each wine item
+                wineItems.forEach((item, index) => {
+                    const wineSelect = item.querySelector('select[name="wine_id[]"]');
+                    const quantityInput = item.querySelector('input[name="wine_quantity[]"]');
+                    const priceInput = item.querySelector('input[name="wine_custom_price[]"]');
+
+                    if (!wineSelect.value) {
+                        showError(wineSelect, 'Seleccione un vino');
+                        isValid = false;
+                    }
+                    const quantityVal = parseInt(quantityInput.value);
+                    if (!quantityInput.value || isNaN(quantityVal) || quantityVal < 1) {
+                        showError(quantityInput, 'Cantidad debe ser 1 o más');
+                        isValid = false;
+                    }
+                     const priceVal = parseFloat(priceInput.value);
+                    if (priceInput.value !== '' && (isNaN(priceVal) || priceVal < 0)) { // Allow empty, but validate if filled
+                         showError(priceInput, 'Precio debe ser 0 o mayor');
+                         isValid = false;
+                     }
+                });
+            }
+
+
+            // Documento SII Number (if required)
+            if (docNumberInput.required && !docNumberInput.value) {
+                showError(docNumberInput, 'Campo requerido');
+                isValid = false;
+            } else if (docNumberInput.required && parseInt(docNumberInput.value) < 1) {
+                 showError(docNumberInput, 'Número debe ser mayor a 0');
+                 isValid = false;
+            }
+
+
+            return isValid;
+        }
+
+        function showError(inputElement, message, isGeneralError = false) {
+            let errorElement;
+            if (isGeneralError) {
+                // Find a general error placeholder, e.g., for the wines section
+                errorElement = document.getElementById(`${inputElement.id.replace('-btn', '')}-error`) || document.getElementById('wines-error'); // Specific or general for wines
+                 if (errorElement) errorElement.textContent = message;
+            } else {
+                inputElement.classList.add('input-error');
+                // Find the sibling .error-message or create one if needed
+                errorElement = inputElement.parentElement.querySelector('.error-message');
+                 if (!errorElement) { // Try finding it within the item for wines
+                    errorElement = inputElement.closest('.wine-subform-item')?.querySelector('.error-message');
+                 }
+                 if (!errorElement && inputElement.id === 'discount') { // Special case for discount
+                     errorElement = document.getElementById('discount-error');
+                 }
+                 if (!errorElement && inputElement.id === 'document-number') {
+                     errorElement = document.getElementById('document-number-error');
+                 }
+                  if (!errorElement && inputElement.id === 'salesperson') {
+                     errorElement = document.getElementById('salesperson-error');
+                 }
+
+            }
+
+
+             if (errorElement) {
+                 errorElement.textContent = message;
+                 errorElement.style.display = 'block';
+             }
+             // Add red border to the input itself if not a general error
+            if (!isGeneralError && inputElement.tagName !== 'BUTTON') {
+                inputElement.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+                inputElement.classList.remove('border-gray-300', 'focus:border-primary', 'focus:ring-primary');
+            }
+        }
+
+        function clearError(inputElement) {
+             inputElement.classList.remove('input-error');
+              const errorElement = inputElement.parentElement.querySelector('.error-message') ||
+                                 inputElement.closest('.wine-subform-item')?.querySelector('.error-message') ||
+                                 document.getElementById('discount-error') || // Include specific error divs
+                                 document.getElementById('document-number-error') ||
+                                 document.getElementById('salesperson-error') ||
+                                 document.getElementById('wines-error'); // Clear general wine error too
+
+             if (errorElement) {
+                 errorElement.style.display = 'none';
+                 errorElement.textContent = ''; // Clear message content
+             }
+             if (inputElement.tagName !== 'BUTTON') {
+                  inputElement.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+                  inputElement.classList.add('border-gray-300', 'focus:border-primary', 'focus:ring-primary');
+             }
+        }
+
+        function clearAllErrors() {
+            const errorMessages = salesForm.querySelectorAll('.error-message');
+            errorMessages.forEach(el => {
+                el.style.display = 'none';
+                 el.textContent = '';
+            });
+            const errorInputs = salesForm.querySelectorAll('.input-error');
+            errorInputs.forEach(el => {
+                 el.classList.remove('input-error');
+                 el.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+                 el.classList.add('border-gray-300', 'focus:border-primary', 'focus:ring-primary');
+            });
+             // Clear general wine error border if needed (though it's shown via text)
+             const winesErrorDiv = document.getElementById('wines-error');
+             if (winesErrorDiv) winesErrorDiv.style.display = 'none';
+        }
+
+         // Helper to update the required state visually for the wine section
+        function updateWineSectionValidationState() {
+             const wineItems = wineSubformContainer.querySelectorAll('.wine-subform-item');
+             const wineLabel = document.querySelector('label[for="wine-subform-container"]'); // Assuming you add a label or target the main div's label
+             const winesErrorDiv = document.getElementById('wines-error');
+
+             if (wineItems.length > 0) {
+                  if (winesErrorDiv) winesErrorDiv.style.display = 'none'; // Hide general error if items exist
+             }
+             // You might visually indicate the section is valid/invalid if needed
+        }
+
+
+        // --- Form Submission Handler ---
+        function handleSubmit(event) {
+            event.preventDefault(); // Prevent default browser submission
+
+            if (validateForm()) {
+                console.log("Form is valid. Preparing data...");
+                // Gather form data
+                const formData = new FormData(salesForm);
+
+                 // Log FormData entries (useful for debugging)
+                console.log("FormData Entries:");
+                for (let [key, value] of formData.entries()) {
+                    console.log(`${key}: ${value}`);
+                }
+
+                // Convert FormData to a plain object (optional, often useful for JSON)
+                 const data = {};
+                 formData.forEach((value, key) => {
+                    // Handle array fields (like wines)
+                    if (key.endsWith('[]')) {
+                         const cleanKey = key.slice(0, -2); // Remove []
+                         if (!data[cleanKey]) {
+                             data[cleanKey] = [];
+                         }
+                         data[cleanKey].push(value);
+                     } else {
+                         data[key] = value;
+                     }
+                 });
+
+                // Structure wine data better
+                if (data.wine_id) {
+                    data.wines = data.wine_id.map((id, index) => ({
+                        id: id,
+                        quantity: data.wine_quantity[index] ? parseInt(data.wine_quantity[index]) : 0,
+                        custom_price: data.wine_custom_price[index] ? parseFloat(data.wine_custom_price[index]) : null
+                    }));
+                    // Remove the original flat arrays
+                    delete data.wine_id;
+                    delete data.wine_quantity;
+                    delete data.wine_custom_price;
+                } else {
+                    data.wines = []; // Ensure wines array exists even if empty (shouldn't happen due to validation)
+                }
+
+
+                console.log("Data to send:", JSON.stringify(data, null, 2));
+
+                 // --- Placeholder for actual submission ---
+                 // Show loading state maybe
+                 const reviewBtn = document.getElementById('review-btn');
+                 reviewBtn.disabled = true;
+                 reviewBtn.textContent = 'Procesando...';
+
+                 // Example using fetch to POST data to a backend endpoint
+                 fetch('/api/sales', { // Replace with your actual backend endpoint
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                         'Accept': 'application/json' // Expect JSON response
+                     },
+                     body: JSON.stringify(data)
+                 })
+                 .then(response => {
+                     if (!response.ok) {
+                         // Try to get error details from response body
+                         return response.json().then(errData => {
+                              throw new Error(errData.message || `Error ${response.status}: ${response.statusText}`);
+                         }).catch(() => {
+                             // Fallback if response body isn't JSON or doesn't have message
+                             throw new Error(`Error ${response.status}: ${response.statusText}`);
+                         });
+                     }
+                     return response.json(); // Assuming the backend responds with JSON
+                 })
+                 .then(result => {
+                     console.log('Success:', result);
+                     // Handle success - e.g., show success message, redirect, clear form
+                     alert('Venta registrada con éxito!'); // Simple success feedback
+                     salesForm.reset(); // Reset the form
+                     flatpickr(saleDateInput).setDate("today", true); // Reset date picker
+                     wineSubformContainer.innerHTML = ''; // Clear wines
+                     addWineSubformItem(); // Add back one empty wine item
+                     clearAllErrors();
+                     handleSiiChange(); // Reset SII field visibility
+                      clientInput.value = ''; // Clear client search
+                      clientIdInput.value = '';
+                      clientDiscountHint.classList.add('hidden');
+                      commentsInput.value = '';
+                      charCountSpan.textContent = '0';
+
+                 })
+                 .catch(error => {
+                     console.error('Error:', error);
+                     // Handle error - e.g., show error message to the user
+                     const statusMsg = document.getElementById('form-status-message');
+                     if (statusMsg) {
+                         statusMsg.textContent = `Error al guardar: ${error.message}`;
+                         statusMsg.classList.add('text-red-600');
+                          statusMsg.classList.remove('text-green-600');
+                     } else {
+                        alert(`Error al guardar la venta: ${error.message}`); // Fallback alert
+                     }
+                 })
+                 .finally(() => {
+                      // Re-enable button regardless of success/failure
+                      reviewBtn.disabled = false;
+                      reviewBtn.textContent = 'Revisar Venta';
+                 });
+
+                 // --- End Placeholder ---
+
+            } else {
+                console.log("Form validation failed.");
+                 const statusMsg = document.getElementById('form-status-message');
+                 if (statusMsg) {
+                     statusMsg.textContent = 'Por favor corrija los errores indicados.';
+                     statusMsg.classList.add('text-red-600');
+                     statusMsg.classList.remove('text-green-600');
+                 }
+            }
+        }
+
+    });
+  </script>
+</body>
+</html>
+```
